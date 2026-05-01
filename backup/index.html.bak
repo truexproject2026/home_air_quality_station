@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Noah AI - Smart Home Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // --- แก้ไขตรงนี้ให้ตรงกับ Firebase ของคุณ ---
+        const firebaseConfig = {
+            apiKey: "AIzaSy...",
+            authDomain: "iotcs423-7bc18.firebaseapp.com",
+            databaseURL: "https://iotcs423-7bc18-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "iotcs423-7bc18",
+            storageBucket: "iotcs423-7bc18.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // ดึงข้อมูลจาก Path /HomeAirQuality
+        onValue(ref(db, 'HomeAirQuality'), (snapshot) => {
+            const data = snapshot.val();
+            document.getElementById("pm25").innerText = data.pm25_value;
+            document.getElementById("time").innerText = data.update_time;
+            
+            const statusDiv = document.getElementById("status");
+            if (data.window_status == 1) {
+                statusDiv.innerText = "เปิดหน้าต่างอยู่";
+                statusDiv.className = "text-2xl font-bold text-red-500";
+            } else {
+                statusDiv.innerText = "ปิดหน้าต่างแล้ว";
+                statusDiv.className = "text-2xl font-bold text-green-500";
+            }
+        });
+    </script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md p-6">
+        <h1 class="text-3xl font-bold text-blue-600 mb-4">Noah AI Monitor</h1>
+        <div class="mb-4">
+            <p class="text-gray-500">ระดับฝุ่น PM2.5:</p>
+            <h2 id="pm25" class="text-6xl font-bold">--</h2>
+            <p class="text-sm">µg/m³</p>
+        </div>
+        <div class="border-t pt-4">
+            <p class="text-gray-500">สถานะหน้าต่าง:</p>
+            <div id="status" class="text-2xl font-bold">กำลังโหลด...</div>
+        </div>
+        <p class="text-xs text-gray-400 mt-4">อัปเดตล่าสุด: <span id="time">--</span></p>
+    </div>
+</body>
+</html>
