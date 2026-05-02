@@ -21,9 +21,9 @@ graph TD
 
     subgraph "Data & AI Layer"
         Supabase[(Supabase Database)]
-        Gemini[Gemini AI Agent]
+        Llama[Llama 3.3 AI (Groq)]
         NextJS -- "Insert Logs" --> Supabase
-        Gemini -- "Analyze Logs" --> Supabase
+        Llama -- "Analyze History" --> Supabase
         Supabase -- "Real-time Update" --> NextJS
     end
 
@@ -36,8 +36,8 @@ graph TD
 
 ## แผนภาพการไหลของข้อมูล (Data Flow)
 1. **ESP32 (Wokwi)** อ่านค่าจากตัวหมุน (PM2.5) และสวิตช์ (หน้าต่าง)
-2. **ESP32** ส่งข้อมูล JSON ผ่าน **SSH Tunnel** (เพราะ Wokwi อยู่บนอินเทอร์เน็ต)
+2. **ESP32** ส่งข้อมูล JSON ผ่าน **SSH Tunnel** ไปยัง API ท้องถิ่น
 3. **Next.js API** รับข้อมูลและบันทึกลงใน **Supabase Table (`sensor_logs`)**
 4. **Supabase Realtime** แจ้งเตือนหน้าเว็บเมื่อมีการบันทึกข้อมูลใหม่
-5. **Dashboard (Frontend)** อัปเดตตัวเลขและกราฟทันทีโดยไม่ต้อง Refresh หน้าจอ
-6. **Gemini AI** ประมวลผลข้อมูลในฐานข้อมูลเพื่อสร้างคำแนะนำ (Insights) ให้ผู้ใช้
+5. **Dashboard (Frontend)** อัปเดตตัวเลขและกราฟทันที
+6. **Llama 3.3 AI (Groq)** ประมวลผลข้อมูลล่าสุดและประวัติเพื่อสร้างคำแนะนำอัจฉริยะ

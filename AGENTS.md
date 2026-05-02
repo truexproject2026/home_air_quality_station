@@ -1,5 +1,19 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# 🤖 Noah AI Agents Strategy
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+ระบบนี้ใช้ **Noah AI** ซึ่งทำงานบนขุมพลังของ **Llama 3.3 70B** ผ่านทาง Groq API เพื่อให้ได้ความเร็วในการประมวลผลระดับเสถียร (Low Latency)
+
+## 🧠 บทบาทของ AI (System Prompt)
+- **ผู้เชี่ยวชาญด้าน IoT**: วิเคราะห์ข้อมูลจากเซนเซอร์ PM 2.5 และสถานะหน้าต่าง
+- **ที่ปรึกษาด้านสุขภาพ**: ให้คำแนะนำการปฏิบัติตัวตามระดับค่าฝุ่น (AQI)
+- **ผู้ช่วยอัจฉริยะ**: สรุปข้อมูลที่ซับซ้อนให้เข้าใจง่ายในประโยคเดียว
+
+## 🔄 กระบวนการทำงาน
+1. **Data Collection**: รับข้อมูลจากเซนเซอร์ทุก 2 วินาที
+2. **Contextual Analysis**: AI ดึงข้อมูลย้อนหลัง 10 รายการเพื่อดู "แนวโน้ม" (เช่น ฝุ่นกำลังเพิ่มขึ้นอย่างรวดเร็ว)
+3. **Actionable Insights**: AI ส่งกลับ JSON ที่ประกอบด้วย สรุป, คำแนะนำ และ "สีสถานะ" (Green, Yellow, Red)
+4. **Visual Feedback**: Dashboard เปลี่ยนสีพื้นหลังตามคำแนะนำของ AI ทันที
+
+## 🛠 Model Details
+- **Provider**: Groq
+- **Model**: `llama-3.3-70b-versatile`
+- **Output Format**: JSON Object

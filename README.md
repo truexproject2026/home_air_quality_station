@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CS423 Noah AI Smart Home - Air Quality Monitoring
 
-## Getting Started
+ระบบติดตามคุณภาพอากาศอัจฉริยะ (PM 2.5) พร้อมการวิเคราะห์ด้วย AI (Llama 3.3) สำหรับรายวิชา CS423 Internet of Things
 
-First, run the development server:
+## 🚀 ฟีเจอร์หลัก
+- **Real-time Monitoring**: ติดตามค่าฝุ่น PM 2.5 และสถานะหน้าต่างแบบวินาทีต่อวินาที
+- **AI Analysis**: ใช้โมเดล **Llama 3.3 70B (via Groq)** ในการวิเคราะห์แนวโน้มและให้คำแนะนำด้านสุขภาพ
+- **Stable Simulation**: ระบบอ่านค่าจาก Potentiometer ใน Wokwi อย่างแม่นยำและนิ่ง (Smooth Reading)
+- **Responsive Dashboard**: หน้าเว็บทันสมัย อัปเดตกราฟและข้อมูลอัตโนมัติด้วย Supabase Realtime
+- **OLED Display**: แสดงสถานะบนหน้าจออุปกรณ์ ESP32 พร้อมระบบ Alert
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🛠 Tech Stack
+- **Hardware**: ESP32 (Wokwi Simulator)
+- **Framework**: Next.js (App Router), TypeScript, Tailwind CSS
+- **Database**: Supabase (PostgreSQL + Realtime)
+- **AI Engine**: Groq (Llama-3.3-70b-versatile)
+- **Communication**: REST API via SSH Tunnel (localhost.run)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📋 วิธีเริ่มใช้งาน
+1. **ติดตั้ง Dependencies**: `npm install`
+2. **ตั้งค่า Environment**: สร้างไฟล์ `.env.local` และใส่ค่า:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key
+   GROQ_API_KEY=your_groq_key
+   ```
+3. **รันระบบ**: `npm run dev`
+4. **เปิดท่อเชื่อมต่อ**: `ssh -R 80:localhost:3000 nokey@localhost.run`
+5. **รัน Wokwi**: นำ URL จากท่อไปใส่ในโค้ด ESP32
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📱 สมาชิกกลุ่ม
+- โครงการนี้พัฒนาขึ้นเพื่อการศึกษาในรายวิชา CS423
