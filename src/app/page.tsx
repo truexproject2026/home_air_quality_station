@@ -6,7 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
 import { 
-  Wind, Home, History, Brain, RefreshCw, AlertTriangle, CheckCircle, Info 
+  Wind, Home, History, Brain, RefreshCw, AlertTriangle, CheckCircle, Info, Sparkles, Activity
 } from 'lucide-react';
 
 interface SensorLog {
@@ -19,6 +19,7 @@ interface SensorLog {
 interface AIInsight {
   summary_text: string;
   recommendation: string;
+  status_color?: string;
   created_at: string;
 }
 
@@ -27,11 +28,11 @@ export default function Dashboard() {
   const [insight, setInsight] = useState<AIInsight | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const fetchData = async () => {
     setIsRefreshing(true);
     try {
-      // Fetch Sensor Logs
       const { data: logData, error: logError } = await supabase
         .from('sensor_logs')
         .select('*')
@@ -41,7 +42,6 @@ export default function Dashboard() {
       if (logError) throw logError;
       setLogs(logData || []);
 
-      // Fetch Latest AI Insight
       const { data: aiData, error: aiError } = await supabase
         .from('ai_insights')
         .select('*')
@@ -52,22 +52,51 @@ export default function Dashboard() {
       if (!aiError) setInsight(aiData);
 
     } catch (error: any) {
-      console.error('Error fetching data:', error.message || error);
-      alert('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + (error.message || 'ไม่สามารถติดต่อฐานข้อมูลได้'));
+      console.error('Error:', error);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
   };
 
+  const runAIAnalysis = async () => {
+    setIsAnalyzing(true);
+    console.log('Starting Noah AI Analysis...');
+    try {
+      const res = await fetch('/api/ai-analyze', { method: 'POST' });
+      const data = await res.json();
+      
+      if (data.error) {
+        console.error('AI API Error:', data.error);
+        alert('เกิดข้อผิดพลาดจาก AI: ' + data.error);
+        return;
+      }
+
+      if (data.summary_text) {
+        console.log('AI Analysis Success:', data);
+        setInsight(data);
+      }
+    } catch (error) {
+      console.error('AI Analysis failed:', error);
+      alert('ไม่สามารถติดต่อ AI ได้ กรุณาเช็คอินเทอร์เน็ตหรือ API Key');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
 
-    // Real-time subscription
     const channel = supabase
       .channel('sensor_logs_changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_logs' }, (payload) => {
-        setLogs((prev) => [payload.new as SensorLog, ...prev.slice(0, 49)]);
+        const newLog = payload.new as SensorLog;
+        setLogs((prev) => [newLog, ...prev.slice(0, 49)]);
+        
+        // ถ้าค่าฝุ่นกระโดดสูงมาก ให้สั่ง AI วิเคราะห์อัตโนมัติ
+        if (newLog.pm25_value > 100) {
+          runAIAnalysis();
+        }
       })
       .subscribe();
 
@@ -90,12 +119,18 @@ export default function Dashboard() {
     return { label: 'มีผลต่อสุขภาพ', color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200' };
   };
 
+  const getAIColor = (status: string | undefined) => {
+    if (status === 'red') return 'from-red-600 to-rose-700';
+    if (status === 'yellow') return 'from-amber-500 to-orange-600';
+    return 'from-indigo-600 to-violet-700';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <RefreshCw className="w-12 h-12 text-blue-500 animate-spin" />
-          <p className="text-gray-500 font-medium text-lg">กำลังโหลดข้อมูล Dashboard...</p>
+          <p className="text-gray-500 font-medium">Noah AI กำลังเตรียมระบบ...</p>
         </div>
       </div>
     );
@@ -114,24 +149,36 @@ export default function Dashboard() {
             </div>
             Noah AI Smart Home
           </h1>
-          <p className="text-slate-500 mt-1">CS423 Internet of Things Project Dashboard</p>
+          <p className="text-slate-500 mt-1 flex items-center gap-2">
+            <Activity size={16} className="text-green-500" />
+            Live System Monitoring
+          </p>
         </div>
-        <button 
-          onClick={fetchData}
-          disabled={isRefreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-all text-sm font-medium disabled:opacity-50"
-        >
-          <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-          รีเฟรชข้อมูล
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={runAIAnalysis}
+            disabled={isAnalyzing}
+            className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl shadow-lg hover:shadow-indigo-200 transition-all font-bold disabled:opacity-50"
+          >
+            <Sparkles size={18} className={isAnalyzing ? 'animate-pulse' : ''} />
+            {isAnalyzing ? 'Noah กำลังวิเคราะห์...' : 'วิเคราะห์ด้วย AI'}
+          </button>
+          <button 
+            onClick={fetchData}
+            disabled={isRefreshing}
+            className="p-2 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-all"
+          >
+            <RefreshCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left Column: Real-time Stats */}
+        {/* Left Column */}
         <div className="lg:col-span-1 space-y-6">
           {/* PM 2.5 Card */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 transition-hover hover:shadow-md">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
             <div className="flex justify-between items-start mb-4">
               <span className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
                 <Wind size={24} />
@@ -142,162 +189,140 @@ export default function Dashboard() {
                 </span>
               )}
             </div>
-            <p className="text-slate-500 text-sm font-medium">ระดับฝุ่น PM 2.5 ในบ้าน</p>
+            <p className="text-slate-500 text-sm font-medium">คุณภาพอากาศปัจจุบัน</p>
             <div className="flex items-baseline gap-2 mt-1">
               <h2 className="text-6xl font-black text-slate-900">{latestLog?.pm25_value ?? '--'}</h2>
               <span className="text-slate-400 font-medium">µg/m³</span>
             </div>
           </div>
 
-          {/* Window Status Card */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 transition-hover hover:shadow-md">
-            <div className="flex justify-between items-start mb-4">
-              <span className={`p-3 rounded-2xl ${latestLog?.window_status === 1 ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'}`}>
-                <Home size={24} />
-              </span>
+          {/* AI Insight Card - NEW DESIGN */}
+          <div className={`bg-gradient-to-br ${getAIColor(insight?.status_color)} p-6 rounded-3xl shadow-lg text-white relative group transition-all duration-500`}>
+            <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
+              <Brain size={140} />
             </div>
-            <p className="text-slate-500 text-sm font-medium">สถานะหน้าต่าง</p>
-            <div className="mt-2 flex items-center gap-3">
-              {latestLog?.window_status === 1 ? (
-                <>
-                  <AlertTriangle className="text-amber-500" size={24} />
-                  <h2 className="text-2xl font-bold text-slate-800">เปิดอยู่</h2>
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="text-green-500" size={24} />
-                  <h2 className="text-2xl font-bold text-slate-800">ปิดแล้ว</h2>
-                </>
-              )}
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Brain size={20} />
+                  <span className="text-sm font-bold tracking-widest uppercase opacity-80">Smart Insight</span>
+                </div>
+                {isAnalyzing && (
+                  <div className="flex gap-1">
+                    <div className="w-1 h-1 bg-white rounded-full animate-bounce"></div>
+                    <div className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:-.3s]"></div>
+                    <div className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:-.5s]"></div>
+                  </div>
+                )}
+              </div>
+              <h3 className="text-xl font-bold mb-2">{insight?.summary_text || 'กำลังรอข้อมูลวิเคราะห์...'}</h3>
+              <div className="bg-black/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 mt-4">
+                <p className="text-indigo-50 text-sm leading-relaxed">
+                  {insight?.recommendation || 'ระบบกำลังรวบรวมข้อมูลเซนเซอร์เพื่อนำมาประมวลผลคำแนะนำโดย AI'}
+                </p>
+              </div>
+              <p className="text-[10px] mt-4 opacity-50 italic">
+                วิเคราะห์ล่าสุดเมื่อ: {insight ? new Date(insight.created_at).toLocaleString('th-TH') : 'N/A'}
+              </p>
             </div>
           </div>
 
-          {/* AI Insight Card */}
-          <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-6 rounded-3xl shadow-lg text-white overflow-hidden relative group">
-            <div className="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
-              <Brain size={120} />
-            </div>
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-4">
-                <Brain size={20} />
-                <span className="text-sm font-bold tracking-widest uppercase opacity-80">Noah AI Agent</span>
-              </div>
-              <h3 className="text-xl font-bold mb-3">บทสรุปและการแนะนำ</h3>
-              <p className="text-indigo-100 text-sm leading-relaxed mb-4">
-                {insight ? insight.summary_text : "ยังไม่มีข้อมูลสรุปจาก AI ในขณะนี้ ระบบจะประมวลผลข้อมูลรายวันเพื่อช่วยให้คุณดูแลสุขภาพได้ดียิ่งขึ้น"}
-              </p>
-              {insight?.recommendation && (
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-                  <div className="flex items-start gap-3">
-                    <Info className="text-indigo-200 mt-1 shrink-0" size={18} />
-                    <p className="text-sm font-medium">{insight.recommendation}</p>
-                  </div>
+          {/* Window Card */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <p className="text-slate-500 text-sm font-medium mb-4">สถานะช่องระบายอากาศ</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`p-4 rounded-2xl ${latestLog?.window_status === 1 ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'}`}>
+                  <Home size={32} />
                 </div>
-              )}
+                <div>
+                  <h4 className="text-2xl font-bold text-slate-800">
+                    {latestLog?.window_status === 1 ? 'เปิดอยู่ (Open)' : 'ปิดแล้ว (Closed)'}
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-1">อัปเดตแบบ Real-time จาก Wokwi</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Chart & Logs */}
+        {/* Right Column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Chart Section */}
           <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
                   <History size={20} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800">กราฟแนวโน้ม PM 2.5 (ย้อนหลัง 50 รายการ)</h3>
+                <h3 className="text-lg font-bold text-slate-800">กราฟแสดงแนวโน้มมลพิษในอากาศ</h3>
               </div>
             </div>
-            <div className="h-[300px] w-full">
+            <div className="h-[320px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorPm" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.2}/>
                       <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                  <XAxis 
-                    dataKey="time" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#94A3B8', fontSize: 12}}
-                    minTickGap={30}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#94A3B8', fontSize: 12}}
-                  />
+                  <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: '#94A3B8', fontSize: 12}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94A3B8', fontSize: 12}} />
                   <Tooltip 
-                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)'}}
                   />
                   <Area 
                     type="monotone" 
                     dataKey="pm25" 
                     stroke="#4F46E5" 
-                    strokeWidth={3}
+                    strokeWidth={4}
                     fillOpacity={1} 
                     fill="url(#colorPm)" 
-                    animationDuration={1500}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Recent Logs Table */}
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-              <h3 className="font-bold text-slate-800">ประวัติข้อมูลล่าสุด</h3>
+              <h3 className="font-bold text-slate-800">ประวัติการตรวจวัด</h3>
+              <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">ล่าสุด 10 รายการ</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50/50">
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">เวลาที่บันทึก</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">ค่า PM 2.5</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">หน้าต่าง</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">เวลา</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">PM 2.5</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">หน้าต่าง</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {logs.slice(0, 10).map((log) => (
                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        {new Date(log.created_at).toLocaleString('th-TH')}
+                      <td className="px-6 py-4 text-sm font-medium text-slate-600">
+                        {new Date(log.created_at).toLocaleTimeString('th-TH')}
                       </td>
+                      <td className="px-6 py-4 font-bold text-slate-900">{log.pm25_value}</td>
                       <td className="px-6 py-4">
-                        <span className={`font-bold ${getPM25Status(log.pm25_value).color}`}>
-                          {log.pm25_value}
+                        <span className={`text-xs font-bold ${log.window_status === 1 ? 'text-amber-500' : 'text-green-500'}`}>
+                          {log.window_status === 1 ? 'OPEN' : 'CLOSED'}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${log.window_status === 1 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
-                          {log.window_status === 1 ? 'เปิด' : 'ปิด'}
-                        </span>
+                      <td className="px-6 py-4 text-xs font-medium text-slate-400 italic">
+                        Logged Successfully
                       </td>
                     </tr>
                   ))}
-                  {logs.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="px-6 py-10 text-center text-slate-400 text-sm italic">
-                        ยังไม่มีข้อมูลประวัติ
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
       </div>
-
-      <footer className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-200 text-center text-slate-400 text-sm pb-8">
-        © 2026 CS423 IoT Project - พัฒนาโดยใช้ Next.js & Supabase
-      </footer>
     </div>
   );
 }

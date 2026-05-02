@@ -1,68 +1,93 @@
-import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+import { supabase } from '@/lib/supabase'
+import { NextResponse } from 'next/server'
 
 export async function POST() {
-  try {
-    // 1. Fetch recent sensor logs (last 24 hours or last 50 entries)
-    const { data: logs, error: fetchError } = await supabase
-      .from('sensor_logs')
-      .select('pm25_value, window_status, created_at')
-      .order('created_at', { ascending: false })
-      .limit(50);
+  console.log('🤖 Noah AI: Starting analysis with Groq (Llama 3.3 70B)...')
+  
+  // ดึงค่าจาก environment variables (.env.local)
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  const MODEL = "llama-3.3-70b-versatile";
 
-    if (fetchError) throw fetchError;
-    if (!logs || logs.length === 0) {
-      return NextResponse.json({ message: 'No data to analyze yet' });
+  try {
+    // ตรวจสอบว่ามี API Key หรือไม่
+    if (!GROQ_API_KEY) {
+      throw new Error('ไม่พบ GROQ_API_KEY ในระบบ (กรุณาเช็คไฟล์ .env.local)');
     }
 
-    // 2. Prepare data for Gemini
-    const dataSummary = logs.map(l => 
-      `Time: ${l.created_at}, PM2.5: ${l.pm25_value}, Window: ${l.window_status === 1 ? 'Open' : 'Closed'}`
-    ).join('\n');
+    const { data: logs, error: logsError } = await supabase
+      .from('sensor_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10)
 
-    const prompt = `
-      You are Noah AI, an IoT Smart Home Assistant. 
-      Based on the following sensor data logs for PM2.5 and Window Status:
-      
-      ${dataSummary}
+    if (logsError) throw new Error('Database Error: ' + logsError.message)
+    if (!logs || logs.length === 0) return NextResponse.json({ error: 'ยังไม่มีข้อมูลเซนเซอร์' }, { status: 404 })
 
-      Please provide:
-      1. A brief summary (in Thai) of the air quality trend for today.
-      2. A specific recommendation (in Thai) regarding whether the user should open or close the windows based on the PM2.5 levels.
+    const latest = logs[0]
+    const historyText = logs.map(l => `- PM2.5: ${l.pm25_value}, Window: ${l.window_status === 1 ? 'Open' : 'Closed'}`).join('\n')
 
-      Format your response as a JSON object with two keys: "summary" and "recommendation".
-      Keep the text concise and helpful for a dashboard.
-    `;
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          {
+            role: "system",
+            content: "คุณคือ Noah AI ผู้ช่วยบ้านอัจฉริยะ ให้คำแนะนำเรื่องคุณภาพอากาศเป็นภาษาไทย ตอบกลับเป็น JSON เท่านั้น ห้ามมีคำเกริ่น"
+          },
+          {
+            role: "user",
+            content: `
+              ข้อมูลล่าสุด: PM2.5=${latest.pm25_value}, Window=${latest.window_status === 1 ? 'Open' : 'Closed'}
+              ประวัติย้อนหลัง:
+              ${historyText}
 
-    // 3. Call Gemini API
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+              ช่วยสรุปและให้คำแนะนำในรูปแบบ JSON นี้:
+              {
+                "summary_text": "สรุปสั้นๆ 1 ประโยค",
+                "recommendation": "คำแนะนำสั้นๆ 1-2 ประโยค",
+                "status_color": "green หรือ yellow หรือ red"
+              }
+            `
+          }
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
+
+    const data = await response.json();
     
-    // Clean up the response (Gemini sometimes adds markdown backticks)
-    const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const aiResponse = JSON.parse(jsonStr);
+    if (data.error) {
+      console.error('Groq Error Detail:', data.error);
+      throw new Error(`Groq API Error: ${data.error.message}`);
+    }
 
-    // 4. Save insight to Supabase
-    const { data, error: insertError } = await supabase
-      .from('ai_insights')
-      .insert([
-        { 
-          summary_text: aiResponse.summary, 
-          recommendation: aiResponse.recommendation 
-        }
-      ])
-      .select();
+    const aiResponse = JSON.parse(data.choices[0].message.content);
 
-    if (insertError) throw insertError;
+    // บันทึกผลลง Database (Optional)
+    try {
+      await supabase.from('ai_insights').insert([{
+        summary_text: aiResponse.summary_text,
+        recommendation: aiResponse.recommendation,
+        status_color: aiResponse.status_color
+      }]);
+    } catch (e) {
+      console.warn("Insight saving skipped.");
+    }
 
-    return NextResponse.json({ message: 'AI Analysis complete', data });
+    return NextResponse.json({
+      ...aiResponse,
+      created_at: new Date().toISOString()
+    });
 
   } catch (error: any) {
-    console.error('AI Route Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('AI Error:', error.message)
+    return NextResponse.json({ 
+      error: `AI Error: ${error.message}` 
+    }, { status: 500 })
   }
 }
