@@ -1,0 +1,41 @@
+================================================================
+คู่มือการสลับจาก Localhost (Tunnel) ไปเป็น Vercel (Production)
+โครงการ CS423 Smart Home - Noah AI
+================================================================
+
+เมื่อคุณนำโปรเจกต์ขึ้น Vercel แล้ว คุณไม่จำเป็นต้องรัน 'npm run dev' หรือ 'ssh tunnel' 
+ในเครื่องคอมพิวเตอร์ของคุณอีกต่อไป ระบบจะทำงานออนไลน์ 24 ชม. ผ่าน Cloud
+
+ขั้นตอนการเปลี่ยนการเชื่อมต่อ:
+
+1. การตั้งค่าใน Vercel (Environment Variables)
+-------------------------------------------
+เพื่อให้ API บน Vercel เชื่อมต่อกับฐานข้อมูลและ AI ได้ ต้องนำค่าจากไฟล์ .env.local 
+ไปใส่ใน Vercel Dashboard:
+   - ไปที่: vercel.com -> เลือกโปรเจกต์ของคุณ -> Settings -> Environment Variables
+   - เพิ่ม Key และ Value ดังนี้:
+     * NEXT_PUBLIC_SUPABASE_URL
+     * NEXT_PUBLIC_SUPABASE_ANON_KEY
+     * GROQ_API_KEY (หรือ GEMINI_API_KEY ตามที่โค้ดใช้)
+   - หลังจากเพิ่มครบแล้ว ให้ทำการ "Redeploy" หนึ่งรอบเพื่อให้ระบบจำค่าใหม่
+
+2. การตั้งค่าใน Wokwi (ESP32)
+-------------------------------------------
+เปลี่ยนที่อยู่เซิร์ฟเวอร์ในโค้ด ESP32 ให้ยิงตรงเข้า Vercel:
+   - ค้นหาบรรทัด: const char* serverName = "https://xxxx.lhr.life/api/sensor";
+   - เปลี่ยนเป็น: const char* serverName = "https://home-air-quality-station.vercel.app/api/sensor";
+
+3. ตรวจสอบ Supabase Realtime
+-------------------------------------------
+เพื่อให้หน้าเว็บ Vercel อัปเดตตัวเลขทันทีที่ Wokwi ส่งข้อมูลมา:
+   - เข้า Supabase Dashboard -> Database -> Replication
+   - ตรวจสอบว่าตาราง 'sensor_logs' ถูกเปิดใช้งาน (ON) ในส่วนของ 'supabase_realtime'
+
+4. วิธีใช้งานใหม่
+-------------------------------------------
+   - ไม่ต้องเปิด Terminal ใน VS Code
+   - ไม่ต้องเปิดท่อ SSH
+   - แค่เปิด Wokwi (กด Play) และเปิด Browser ไปที่ URL ของ Vercel
+   - ข้อมูลจะไหลจาก Wokwi -> Vercel API -> Supabase -> Dashboard ทันที
+
+================================================================

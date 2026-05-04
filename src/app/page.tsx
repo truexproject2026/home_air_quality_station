@@ -61,7 +61,7 @@ export default function Dashboard() {
 
   const runAIAnalysis = async () => {
     setIsAnalyzing(true);
-    console.log('Starting Noah AI Analysis...');
+    console.log('Starting AI Analysis...');
     try {
       const res = await fetch('/api/ai-analyze', { method: 'POST' });
       const data = await res.json();
@@ -130,7 +130,7 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <RefreshCw className="w-12 h-12 text-blue-500 animate-spin" />
-          <p className="text-gray-500 font-medium">Noah AI กำลังเตรียมระบบ...</p>
+          <p className="text-gray-500 font-medium">ระบบกำลังเตรียมการ...</p>
         </div>
       </div>
     );
@@ -147,7 +147,7 @@ export default function Dashboard() {
             <div className="p-2 bg-blue-600 rounded-lg text-white">
               <Home size={28} />
             </div>
-            Noah AI Smart Home
+            Smart Home Air Quality Monitoring System
           </h1>
           <p className="text-slate-500 mt-1 flex items-center gap-2">
             <Activity size={16} className="text-green-500" />
@@ -161,7 +161,7 @@ export default function Dashboard() {
             className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl shadow-lg hover:shadow-indigo-200 transition-all font-bold disabled:opacity-50"
           >
             <Sparkles size={18} className={isAnalyzing ? 'animate-pulse' : ''} />
-            {isAnalyzing ? 'Noah กำลังวิเคราะห์...' : 'วิเคราะห์ด้วย AI'}
+            {isAnalyzing ? 'กำลังวิเคราะห์...' : 'วิเคราะห์ด้วย AI'}
           </button>
           <button 
             onClick={fetchData}

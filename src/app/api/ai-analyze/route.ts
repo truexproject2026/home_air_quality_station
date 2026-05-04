@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 
 export async function POST() {
-  console.log('🤖 Noah AI: Starting analysis with Groq (Llama 3.3 70B)...')
+  console.log('🤖 Starting analysis with Groq (Llama 3.3 70B)...')
   
   // ดึงค่าจาก environment variables (.env.local)
   const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -37,7 +37,7 @@ export async function POST() {
         messages: [
           {
             role: "system",
-            content: "คุณคือ Noah AI ผู้ช่วยบ้านอัจฉริยะ ให้คำแนะนำเรื่องคุณภาพอากาศเป็นภาษาไทย ตอบกลับเป็น JSON เท่านั้น ห้ามมีคำเกริ่น"
+            content: "คุณคือผู้ช่วยบ้านอัจฉริยะ ให้คำแนะนำเรื่องคุณภาพอากาศเป็นภาษาไทย ตอบกลับเป็น JSON เท่านั้น ห้ามมีคำเกริ่น"
           },
           {
             role: "user",

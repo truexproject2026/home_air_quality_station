@@ -1,0 +1,51 @@
+# System Overview: Noah AI Smart Home Dashboard (CS423 IoT Project)
+
+## 1. Project Concept
+Noah AI เป็นระบบผู้ช่วยอัจฉริยะ (Smart Home Assistant) ที่มุ่งเน้นการตรวจวัดคุณภาพอากาศ (PM2.5) ภายในที่พักอาศัย โดยไม่ได้ทำหน้าที่เพียงแค่แสดงผลข้อมูล แต่มีการใช้ AI (Large Language Model) ในการวิเคราะห์สถานการณ์และให้คำแนะนำแก่ผู้อยู่อาศัยในการควบคุมสภาพแวดล้อม (เช่น การเปิด-ปิดหน้าต่าง) เพื่อสุขภาพที่ดีที่สุด
+
+## 2. System Architecture (Flow)
+ระบบทำงานแบบ End-to-End Real-time Flow ดังนี้:
+
+[ Device Layer ] (Wokwi Simulator / ESP32)
+- เซนเซอร์จำลองส่งค่า PM2.5 และสถานะหน้าต่าง (Window Status)
+- เชื่อมต่อผ่าน WiFi และส่งข้อมูลผ่าน HTTP POST Request
+       |
+       v
+[ API Layer ] (Next.js API Routes on Vercel)
+- รับข้อมูลจากอุปกรณ์ ตรวจสอบความถูกต้อง (Validation)
+- ทำหน้าที่เป็น Gateway ระหว่าง Hardware และ Cloud Database
+       |
+       v
+[ Data & Real-time Layer ] (Supabase Cloud)
+- เก็บข้อมูลลง PostgreSQL Database (ตาราง sensor_logs)
+- ใช้ฟีเจอร์ "Postgres Changes" (Realtime) เพื่อกระจายข้อมูลไปยัง Frontend ทันทีที่มีการ Insert
+       |
+       v
+[ Presentation Layer ] (Next.js Dashboard)
+- แสดงผลค่าฝุ่นแบบ Real-time และกราฟเส้นแสดงแนวโน้ม (Recharts)
+- มีระบบ Dynamic UI ที่เปลี่ยนสีตามความรุนแรงของค่าฝุ่น (Blue/Green/Yellow/Orange/Red)
+       |
+       v
+[ Intelligence Layer ] (Noah AI - Llama 3.3 via Groq)
+- เมื่อค่าฝุ่นสูงเกินเกณฑ์ หรือผู้ใช้กดปุ่มวิเคราะห์
+- ระบบจะส่งข้อมูล 100 ชุดล่าสุดให้ AI วิเคราะห์
+- AI จะประมวลผลและตอบกลับเป็นภาษาไทย เพื่อแนะนำการจัดการหน้าต่างและสุขภาพ
+
+## 3. Key Technical Features
+- Real-time Updates: ใช้ WebSockets (via Supabase) เพื่ออัปเดตหน้าจอโดยไม่ต้องกด Refresh
+- AI Logic: มีการตั้งเงื่อนไข (Threshold) ให้ AI วิเคราะห์อัตโนมัติเมื่อค่า PM2.5 > 100
+- Cloud-Native: ระบบรันอยู่บน Vercel และ Supabase ทำให้เข้าถึงได้จากทุกที่ทุกเวลา
+- UI/UX: ออกแบบด้วย Tailwind CSS เน้นความสะอาดตา (Clean UI) และใช้งานง่าย (User-Friendly)
+
+## 4. Use Case Scenario
+1. ฝุ่นภายนอกเริ่มสูงขึ้น (ค่า PM2.5 ใน Wokwi เพิ่มขึ้น)
+2. หน้าจอ Dashboard เปลี่ยนจากสีเขียวเป็นสีส้มทันที
+3. Noah AI วิเคราะห์แล้วพบว่าควรปิดหน้าต่าง จึงขึ้นข้อความเตือน: "ขณะนี้ค่าฝุ่นเริ่มมีผลต่อสุขภาพ แนะนำให้ปิดหน้าต่างและเปิดเครื่องฟอกอากาศค่ะ"
+4. ผู้ใช้ดำเนินการตามคำแนะนำเพื่อความปลอดภัยของครอบครัว
+
+## 5. Technology Stack
+- Frontend: Next.js 15, TypeScript, Tailwind CSS, Recharts, Lucide React
+- Backend: Next.js API Routes
+- Database: Supabase (PostgreSQL + Realtime)
+- AI: Groq Cloud API (Llama 3.3 70B Model)
+- Hardware Sim: Wokwi (ESP32)
